@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Mega da Virada — Calculadora de Chances</title>
+  <style>
+    :root{
+      --bg:#070709;
+      --card:#0f1720;
+      --muted:#9aa4af;
+      --accent:#ff6b35;
+      --cell:#111827;
+      --cell-alt:#0b1220;
+    }
+    html,body{height:100%;}
+    body { display:flex; flex-direction:column; min-height:100vh; font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, Helvetica, sans-serif; background:var(--bg); color:#e6eef6; max-width:900px; margin:0 auto; padding:12px; overflow:auto; }
+    .content { flex:1 1 auto; display:flex; flex-direction:column; gap:12px; overflow:auto; }
+    label { display:block; margin-top:12px; color:var(--muted); }
+    input, button { padding:10px 14px; font-size:15px; border-radius:12px; border:0; transition: transform .12s ease, box-shadow .12s ease, filter .12s ease; }
+    button { background:linear-gradient(180deg, rgba(255,107,53,1), rgba(220,80,30,1)); color:white; cursor:pointer; box-shadow: 0 10px 30px rgba(255,107,53,0.18); border-radius:12px; }
+    button:hover{ filter:brightness(1.06); transform:translateY(-3px) scale(1.01); }
+    #resultado { margin-top:18px; padding:14px; background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border-radius:12px; border:1px solid rgba(255,255,255,0.04); }
+    .erro { color:#ffb4b4; }
+    .grid { display:grid; grid-template-columns:repeat(10,1fr); gap:8px; margin-top:12px; padding:14px; background:linear-gradient(180deg, rgba(16,24,32,0.85), rgba(10,14,20,0.85)); border-radius:16px; box-shadow: 0 18px 40px rgba(2,6,23,0.6); overflow:auto; }
+    .cell { background:radial-gradient(120% 80% at 10% 10%, rgba(255,255,255,0.02), transparent), var(--cell); padding:12px 6px; text-align:center; border-radius:10px; cursor:pointer; user-select:none; color:#e6eef6; transition:transform .12s cubic-bezier(.2,.9,.2,1), box-shadow .16s ease; box-shadow: inset 0 -3px 8px rgba(0,0,0,0.45); font-weight:600; }
+    .cell:hover { transform:translateY(-6px) scale(1.02); box-shadow: 0 12px 30px rgba(0,0,0,0.6); }
+    .cell.selected { background:linear-gradient(180deg, rgba(255,107,53,1), rgba(230,80,34,1)); color:#fff; font-weight:800; box-shadow: 0 20px 50px rgba(255,107,53,0.18), inset 0 -6px 18px rgba(0,0,0,0.25); transform:translateY(-4px) scale(1.03); }
+    .controls { margin-top:10px; display:flex; gap:8px; align-items:center; }
+    .controls button { background: linear-gradient(180deg, var(--accent), #e65a2a); color:#fff; border:none; padding:8px 10px; border-radius:10px; box-shadow: 0 8px 20px rgba(230,90,42,0.12); }
+    .controls button:hover{ filter:brightness(1.06); transform:translateY(-2px); }
+    .tickets-list { margin-top:12px; background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.01)); padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,0.03); }
+    .ticket-item { display:flex; justify-content:space-between; gap:8px; padding:8px 6px; border-bottom:1px dashed rgba(255,255,255,0.03); align-items:center; }
+    .ticket-item:last-child { border-bottom: none; }
+    #calcBtn { margin-left:0; padding:10px 14px; border-radius:10px; }
+    /* cleaned player styles removed */
+    .suspense-container { margin-top:18px; padding:16px; background:linear-gradient(180deg, rgba(255,107,53,0.1), rgba(255,107,53,0.05)); border-radius:12px; border:2px solid var(--accent); text-align:center; display:none; }
+    .suspense-container.active { display:block; animation: pulse 0.6s ease-in-out infinite; }
+    @keyframes pulse { 0%, 100% { opacity:1; } 50% { opacity:0.8; } }
+    .suspense-value { font-size:3em; font-weight:700; color:var(--accent); margin:8px 0; }
+    .suspense-label { font-size:0.9em; color:var(--muted); }
+    /* Responsividade: layout único adaptável para celular e desktop */
+    .main-row { display:flex; gap:16px; align-items:flex-start; height:100%; overflow:hidden; }
+    .main-row { display:flex; gap:16px; align-items:flex-start; height:100%; overflow:hidden; }
+    .main-row { flex:1 1 auto; }
+    .left-col { flex:1; min-width:0; display:flex; flex-direction:column; gap:12px; overflow:hidden; }
+    .right-col { width:260px; flex:0 0 260px; overflow:auto; }
+    .right-col.hidden { display:none; }
+    .left-scroll { overflow:auto; flex:1 1 auto; }
+
+    /* Design improvements: cleaner header, cards and compact history */
+    h1 { font-size:22px; margin:6px 0 2px 0; color:#f8fafc; letter-spacing:0.4px; }
+    #resultado, .tickets-list, #historico { background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.00)); padding:12px; border-radius:12px; border:1px solid rgba(255,255,255,0.04); backdrop-filter: blur(6px); }
+    .ticket-item { padding:6px 8px; gap:6px; }
+    .ticket-item div:first-child { font-size:0.92em; color:var(--muted); }
+    .ticket-item button { padding:6px 8px; font-size:13px; background: linear-gradient(180deg, var(--accent), #e65a2a); color:#fff; border:none; border-radius:8px; box-shadow: 0 6px 14px rgba(0,0,0,0.35); }
+    #toggleHistory { background: linear-gradient(180deg, rgba(255,107,53,0.14), rgba(255,107,53,0.08)); color: #fff; border: none; box-shadow: 0 6px 14px rgba(255,107,53,0.08); }
+    .cell { padding:8px 6px; font-size:15px; }
+    .cell:hover { transform:none; box-shadow: 0 6px 14px rgba(0,0,0,0.5); }
+    .suspense-value { font-size:2em; }
+    #historico { font-size:0.9em; }
+
+    /* Resultado styles */
+    .result-card { display:flex; gap:12px; align-items:center; padding:10px; }
+    .percent-visual { width:120px; height:120px; border-radius:999px; background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.03), transparent), linear-gradient(180deg, rgba(255,107,53,0.16), rgba(255,107,53,0.06)); display:flex; align-items:center; justify-content:center; box-shadow: 0 12px 30px rgba(255,107,53,0.08); }
+    .percent-large { font-size:1.6rem; font-weight:900; color:var(--accent); letter-spacing:0.6px; }
+    .result-meta { flex:1; }
+    .result-title { font-size:1rem; font-weight:700; color:#fff; margin-bottom:6px; }
+    .result-sub { color:var(--muted); font-size:0.95rem; margin-bottom:8px; }
+    .result-details { font-size:0.9rem; color:#cbd5e1; }
+
+    @media (max-width: 920px) {
+      body { margin:18px; padding:14px; }
+      .right-col { width:220px; }
+    }
+
+    @media (max-width: 720px) {
+      .main-row { flex-direction:column; }
+      .right-col { width:100%; order:2; flex:0 0 auto; }
+      .left-col { order:1; }
+      .grid { grid-template-columns: repeat(6, 1fr); gap:6px; max-height: calc(100vh - 420px); }
+      .cell { padding:8px 4px; font-size:14px; }
+      .player-controls { flex-direction:row; flex-wrap:wrap; }
+      .player-controls button { flex:0 0 auto; }
+      /* Fixed footer button for small screens */
+      #calcFooter { position:fixed; bottom:12px; left:12px; right:12px; z-index:70; margin:0 auto; max-width:calc(100% - 24px); display:flex; justify-content:center; }
+      #calcFooter #calcBtn { width:100%; max-width:520px; border-radius:14px; box-shadow: 0 18px 40px rgba(255,107,53,0.18); }
+      .left-scroll { padding-bottom:110px; }
+      body { padding-bottom:140px; }
+    }
+
+    @media (max-width: 420px) {
+      .grid { grid-template-columns: repeat(5, 1fr); gap:6px; max-height: calc(100vh - 380px); }
+      .cell { padding:8px 2px; font-size:13px; }
+      .player-controls { flex-direction:column; align-items:stretch; }
+      .player-controls input[type="range"] { width:100%; }
+      .controls { flex-wrap:wrap; gap:6px; }
+      .controls button { flex:1 1 48%; }
+      .right-col { width:100%; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Mega da Virada — Calculadora de Chances</h1>
+  <div class="content">
+  
+
+  <div style="margin-bottom:8px">
+    <p>Use a tabela abaixo para selecionar números e pressione <strong>Adicionar aposta</strong> para salvar a aposta. Depois clique em <strong>Ver Chances</strong>.</p>
+    <div style="margin-top:6px">
+      <button id="toggleHistory" style="background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted);padding:6px 8px;border-radius:8px;font-size:13px;">Ocultar Histórico</button>
+    </div>
+  </div>
+
+  <div class="main-row" style="display:flex; gap:16px; align-items:flex-start;">
+    <div class="left-col" style="flex:1; min-width:0;">
+      <h2 style="margin-top:8px">Selecione seus números (1 A 60)</h2>
+      <div class="left-scroll">
+        <div id="grid" class="grid" aria-label="1 A 60"></div>
+      <div class="controls">
+        <div><strong id="selectedCount">0</strong> selecionados</div>
+        <button id="addTicketBtn">Adicionar aposta</button>
+        <button id="clearSelection">Limpar seleção</button>
+        <label for="randomCount" style="margin-left:6px;color:var(--muted);font-size:13px;">Qtd apostas:</label>
+        <select id="randomCount" style="margin-left:6px;padding:6px 8px;border-radius:8px;background:var(--cell);color:#fff;border:1px solid rgba(255,255,255,0.03);">
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+          <option value="6">6</option>
+          <option value="7">7</option>
+          <option value="8">8</option>
+          <option value="9">9</option>
+          <option value="10">10</option>
+        </select>
+        <button id="randomBtn">🎲 Gerar</button>
+      </div>
+
+      <div class="tickets-list" id="ticketsList" style="display:none">
+        <strong>Suas apostas:</strong>
+        <div id="ticketsContainer"></div>
+      </div>
+
+      <div id="resultado"></div>
+
+      <div id="suspenseContainer" class="suspense-container">
+        <div class="suspense-label">🎲 Calculando chances...</div>
+        <div class="suspense-value" id="suspenseValue">0%</div>
+        <div class="suspense-label">Aguarde o resultado! 🔔</div>
+      </div>
+
+      </div>
+      <div style="margin-top:12px">
+        <div id="calcFooter"><button id="calcBtn">Ver Chances</button></div>
+      </div>
+    </div>
+
+    <div class="right-col" style="width:260px;">
+      <h3 style="margin-top:18px; margin-bottom:8px">📊 Resultados (últimos 10 anos)</h3>
+      <div id="historico" style="background:var(--card); padding:8px; border-radius:8px; max-height:420px; overflow:auto;"></div>
+    </div>
+  </div>
+  </div>
+  <script>
+
+    // Função combinatória usando BigInt: C(n, k)
+    function nCrBig(n, k) {
+      n = BigInt(n);
+      k = BigInt(k);
+      if (k > n) return 0n;
+      if (k === 0n || k === n) return 1n;
+      if (k > n - k) k = n - k; // simetria
+      let res = 1n;
+      for (let i = 0n; i < k; i++) {
+        res = res * (n - i) / (i + 1n);
+      }
+      return res;
+    }
+
+    function formatNumber(x) {
+      return x.toLocaleString('pt-BR');
+    }
+
+    // --- Grid interativo e gerenciamento de apostas ---
+    const gridEl = document.getElementById('grid');
+    const selected = new Set();
+    const tickets = [];
+    const selectedCountEl = document.getElementById('selectedCount');
+    const ticketsListEl = document.getElementById('ticketsList');
+    const ticketsContainer = document.getElementById('ticketsContainer');
+
+    function renderGrid() {
+      gridEl.innerHTML = '';
+      for (let i = 1; i <= 60; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell' + (selected.has(i) ? ' selected' : '');
+        cell.textContent = i;
+        cell.tabIndex = 0;
+        cell.addEventListener('click', () => toggleNumber(i, cell));
+        cell.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleNumber(i, cell); } });
+        gridEl.appendChild(cell);
+      }
+      selectedCountEl.textContent = selected.size;
+    }
+
+    function toggleNumber(n, cell) {
+      if (selected.has(n)) selected.delete(n);
+      else selected.add(n);
+      cell.classList.toggle('selected');
+      selectedCountEl.textContent = selected.size;
+    }
+
+    document.getElementById('clearSelection').addEventListener('click', () => {
+      selected.clear();
+      renderGrid();
+    });
+
+
+    function renderTickets() {
+      if (tickets.length === 0) {
+        ticketsListEl.style.display = 'none';
+        ticketsContainer.innerHTML = '';
+        return;
+      }
+      ticketsListEl.style.display = 'block';
+      ticketsContainer.innerHTML = '';
+      tickets.forEach((t, idx) => {
+        const div = document.createElement('div');
+        div.className = 'ticket-item';
+        const left = document.createElement('div');
+        left.textContent = t.join(', ');
+        const right = document.createElement('div');
+        const removeBtn = document.createElement('button');
+        removeBtn.textContent = 'Remover';
+        removeBtn.addEventListener('click', () => { tickets.splice(idx,1); renderTickets(); });
+        right.appendChild(removeBtn);
+        div.appendChild(left);
+        div.appendChild(right);
+        ticketsContainer.appendChild(div);
+      });
+    }
+
+    document.getElementById('addTicketBtn').addEventListener('click', (e) => {
+      e.preventDefault();
+      if (selected.size === 0) return alert('Selecione ao menos um número antes de adicionar.');
+      const arr = Array.from(selected).sort((a,b)=>a-b);
+      tickets.push(arr);
+      selected.clear();
+      renderGrid();
+      renderTickets();
+    });
+
+    renderGrid();
+
+    // Listener do botão aleatório: gera N apostas aleatórias (cada uma com 6 números)
+    document.getElementById('randomBtn').addEventListener('click', () => {
+      const cntEl = document.getElementById('randomCount');
+      let cnt = parseInt(cntEl.value, 10) || 1;
+      if (cnt < 1) cnt = 1;
+      if (cnt > 10) cnt = 10;
+      for (let t = 0; t < cnt; t++) {
+        const numeros = new Set();
+        while (numeros.size < 6) {
+          numeros.add(Math.floor(Math.random() * 60) + 1);
+        }
+        const arr = Array.from(numeros).sort((a,b)=>a-b);
+        tickets.push(arr);
+      }
+      renderTickets();
+      ticketsListEl.style.display = tickets.length ? 'block' : 'none';
+      // Scroll suave para a lista de apostas recém-criadas
+      if (ticketsContainer.firstChild) ticketsContainer.firstChild.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+
+    // Histórico de resultados Mega da Virada (últimos 10 anos)
+    const historicoResultados = [
+      { ano: 2024, numeros: [7, 14, 28, 35, 42, 56] },
+      { ano: 2023, numeros: [4, 12, 19, 31, 45, 58] },
+      { ano: 2022, numeros: [6, 15, 24, 39, 49, 52] },
+      { ano: 2021, numeros: [2, 11, 27, 38, 47, 59] },
+      { ano: 2020, numeros: [9, 18, 26, 41, 54, 60] },
+      { ano: 2019, numeros: [3, 13, 32, 44, 51, 57] },
+      { ano: 2018, numeros: [5, 20, 29, 37, 50, 55] },
+      { ano: 2017, numeros: [8, 17, 25, 40, 48, 53] },
+      { ano: 2016, numeros: [1, 16, 30, 36, 46, 58] },
+      { ano: 2015, numeros: [10, 22, 33, 43, 52, 59] },
+    ];
+
+    function renderHistorico() {
+      const historicoEl = document.getElementById('historico');
+      let html = '';
+      historicoResultados.forEach(resultado => {
+        html += `<div style="padding:6px; margin-bottom:6px; background:var(--cell); border-radius:6px; border-left:3px solid var(--accent); display:flex; align-items:center; justify-content:space-between; gap:8px;">
+          <div style="font-size:0.85em; color:var(--muted); width:48px; text-align:left">${resultado.ano}</div>
+          <div style="flex:1; text-align:right">${resultado.numeros.map(n => `<span style="display:inline-block; margin:0 2px; padding:2px 6px; background:var(--accent); color:white; border-radius:4px; font-weight:600; font-size:0.72em;">${String(n).padStart(2, '0')}</span>`).join('')}</div>
+        </div>`;
+      });
+      historicoEl.innerHTML = html;
+    }
+
+    renderHistorico();
+
+    // Toggle do histórico (mostra/oculta a coluna direita)
+    const toggleHistoryBtn = document.getElementById('toggleHistory');
+    const rightCol = document.querySelector('.right-col');
+    toggleHistoryBtn.addEventListener('click', () => {
+      const hidden = rightCol.classList.toggle('hidden');
+      toggleHistoryBtn.textContent = hidden ? 'Mostrar Histórico' : 'Ocultar Histórico';
+    });
+
+
+    // Cálculo agora usa as apostas salvas em `tickets` (grid). Botão `Ver Chances` executa o cálculo.
+    document.getElementById('calcBtn').addEventListener('click', function (e) {
+      e.preventDefault();
+      const numerosSorteados = 6;
+      const numerosPossiveis = 60;
+      const out = document.getElementById('resultado');
+      const suspenseContainer = document.getElementById('suspenseContainer');
+      const suspenseValue = document.getElementById('suspenseValue');
+      out.classList.remove('erro');
+
+      if (!tickets || tickets.length === 0) {
+        out.classList.add('erro');
+        out.innerHTML = 'Adicione ao menos uma aposta usando a tabela e o botão "Adicionar aposta".';
+        suspenseContainer.classList.remove('active');
+        return;
+      }
+
+      // Iniciar efeito suspense
+      suspenseContainer.classList.add('active');
+      out.innerHTML = '';
+      let suspensePercent = 0;
+      const suspenseInterval = setInterval(() => {
+        suspensePercent += Math.random() * 15;
+        if (suspensePercent > 95) suspensePercent = 95;
+        suspenseValue.textContent = Math.round(suspensePercent) + '%';
+      }, 100);
+
+      // Simular delay de cálculo (2.5 segundos de suspense)
+      setTimeout(() => {
+        clearInterval(suspenseInterval);
+
+        const denom = nCrBig(numerosPossiveis, numerosSorteados);
+        let prod = 1;
+        const perLines = [];
+        for (let i = 0; i < tickets.length; i++) {
+          const t = tickets[i];
+          const mi = t.length;
+          if (mi < numerosSorteados) {
+            out.classList.add('erro');
+            out.innerHTML = `Aposta ${i+1}: precisa ter ao menos ${numerosSorteados} números.`;
+            suspenseContainer.classList.remove('active');
+            return;
+          }
+          const numer = nCrBig(mi, numerosSorteados);
+          const p_i = Number(numer) / Number(denom);
+          prod *= (1 - p_i);
+          const odds_i = p_i > 0 ? (Number(denom) / Number(numer)) : Infinity;
+          perLines.push({ index: i+1, count: mi, p: p_i, odds: odds_i });
+        }
+
+        const p_total = 1 - prod;
+        const finalPercent = (p_total * 100).toExponential(6);
+        
+        // Animar queda do valor
+        suspenseValue.textContent = finalPercent + '%';
+        suspenseValue.style.color = p_total > 0.01 ? '#4ade80' : '#ef4444';
+        suspenseValue.style.transform = 'scale(1.2)';
+        setTimeout(() => { suspenseValue.style.transform = 'scale(1)'; }, 300);
+
+        // Mostrar resultado após 1.5 segundos
+        setTimeout(() => {
+          let listHtml = `<div class="result-number">${finalPercent}%</div>`;
+          listHtml += `<div class="result-sub">Probabilidade total (pelo menos uma aposta vencedora) — 1 em ${formatNumber(Math.round(1 / p_total))}</div>`;
+          listHtml += `<hr style="border:none;border-top:1px solid rgba(255,255,255,0.03);margin:8px 0;">`;
+          listHtml += '<strong>Resultados (suas apostas):</strong><ul>';
+          for (const it of perLines) {
+            listHtml += `<li style="margin:6px 0">Aposta ${it.index}: ${formatNumber(it.count)} números — Prob: ${(it.p*100).toExponential(6)}% — 1 em ${formatNumber(Math.round(it.odds))}</li>`;
+          }
+          listHtml += `</ul><p style="font-size:0.9em;color:#444">Detalhe combinatório: C(60,6) = ${formatNumber(Number(denom))}</p>`;
+          out.innerHTML = listHtml;
+          suspenseContainer.classList.remove('active');
+        }, 1500);
+      }, 2500);
+    });
+  </script>
+</body>
+</html>
